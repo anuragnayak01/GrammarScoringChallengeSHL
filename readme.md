@@ -6,6 +6,11 @@ It does not rely on one model. It looks at each clip in many ways, trains many s
 
 ---
 
+## 🏗️ Architecture
+
+The pipeline processes raw audio clips, filters out ungradable noise, extracts multi-modal features, and applies a blended machine learning stack to generate a highly calibrated final grammar score.
+
+```mermaid
 flowchart TD
     accTitle: Grammar Scoring Pipeline
     accDescr: Audio clips are filtered for noise, processed into text and speech features, scored by an ensemble model, and normalized into a final 1-5 grade.
@@ -65,7 +70,6 @@ flowchart TD
     classDef input fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a;
     classDef output fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
     classDef guard fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef step fill:#eef2ff,stroke:#4f46e5,stroke-dasharray: 5 5;
 
     class audio input;
     class out output;
@@ -73,6 +77,18 @@ flowchart TD
     style step1 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
     style step2 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
     style step3 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
+```
+
+### 📋 Pipeline Breakdown
+
+1. **Gatekeeping & Cleanup:** The audio is immediately passed through a noise gate classifier. If it contains purely noise, the pipeline short-circuits to output a **Score of 0**, preserving computing power.
+2. **Feature Extraction:** Valid speech is broken down into multi-modal components:
+   * **Speech Features:** Acoustic and audio metrics.
+   * **Transcripts & Text Features:** Text generated via ASR tools.
+   * **Grammar Error Signals:** Explicit downstream grammar markers parsed from the transcript text.
+3. **Ensemble Modeling:** Features are passed through diversified baseline architectures (`Ridge`, `SVR`, `TabPFN`), which are then blended using Non-Negative Least Squares (`NNLS`) combined with an ordinal head to output a continuous score.
+4. **Post-Processing:** Scores are normalized across the same speaker using group pooling and clipped to match the evaluation metric's strict **1 to 5 boundary constraint**.
+
 
 ---
 
