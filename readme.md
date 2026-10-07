@@ -1,7 +1,6 @@
 # Grammar Scoring Engine
 
-This project gives a grammar score from 0 to 5 to a short spoken English clip (45-60 seconds).
-
+This is my solution to the SHL Hiring Assessment 2026 Kaggle competition. The task is to predict a 0–5 grammar score for spoken English clips (769 train, 216 test). 
 It does not rely on one model. It looks at each clip in many ways, trains many small models, and mixes their answers into one final score.
 
 ---
@@ -86,7 +85,14 @@ Open the notebook, set the data and features paths in the first cell, and run al
 
 ## 📊 Results
 
-RMSE is the average error (lower is better). Pearson shows how closely predictions follow the true grades (higher is better). All numbers come from the notebook's validation, where clips from the same speaker are never split between training and testing.
+| | RMSE |
+|---|---|
+| Public leaderboard | **0.3382** |
+| Speaker-grouped cross-validation | 0.509 |
+| Training (in-sample) | 0.225 |
+
+
+RMSE is the average error (lower is better). Pearson shows how closely predictions follow the true grades (higher is better). The numbers in the table below come from the notebook's validation, where clips from the same speaker are never split between training and testing.
 
 | Model | RMSE | Pearson |
 | --- | --- | --- |
@@ -96,6 +102,13 @@ RMSE is the average error (lower is better). Pearson shows how closely predictio
 | Ordinal head only | 0.5145 | 0.8621 |
 | **Final mix (NNLS + ordinal head, 50/50)** | **0.5085** | **0.8652** |
 | Final mix + same-speaker pooling | **0.5039** | - |
+
+**Other checks**
+
+- **Unseen questions:** on questions the model never saw in training, the final mix gets an RMSE of 0.5191 (plain average: 0.5665).
+- **By clip length** (final mix, before pooling): 45 s clips 0.520, 60 s clips 0.508, under 44 s 0.514, 44-59 s 0.437.
+- **Noise rule:** it caught all 37 noise clips in training (100%). No test clip was flagged.
+- **Why speaker-safe validation matters:** one test model scored 0.522 with random splits but 0.606 when speakers were kept apart. Random splits make the score look better than it really is.
 
 **Data size**
 
@@ -108,3 +121,8 @@ RMSE is the average error (lower is better). Pearson shows how closely predictio
 
 ---
 
+## ⚠️ Good to know
+
+- Settings like pruning and mixing weights are chosen on the same validation used for scoring, so the score is slightly optimistic.
+- Speaker pooling helps less on the test set. 74% of graded train clips share a speaker with another clip, but only 25% of test clips do, so expect about a third of the pooling gain there.
+- The training score (0.225) is much lower than the validation score (0.509) because the models have seen those clips. Use the validation score to judge the model.
