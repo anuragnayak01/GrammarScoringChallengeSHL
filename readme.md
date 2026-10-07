@@ -87,9 +87,8 @@ Open the notebook, set the data and features paths in the first cell, and run al
 
 | | RMSE |
 |---|---|
-| Public leaderboard | **0.3382** |
-| Speaker-grouped cross-validation | 0.509 |
-| Training (in-sample) | 0.225 |
+| Public leaderboard | **0.3214** |
+
 
 
 RMSE is the average error (lower is better). Pearson shows how closely predictions follow the true grades (higher is better). The numbers in the table below come from the notebook's validation, where clips from the same speaker are never split between training and testing.
