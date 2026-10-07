@@ -7,88 +7,7 @@ It does not rely on one model. It looks at each clip in many ways, trains many s
 ---
 
 ## 🏗️ Architecture
-
-The pipeline processes raw audio clips, filters out ungradable noise, extracts multi-modal features, and applies a blended machine learning stack to generate a highly calibrated final grammar score.
-
-```mermaid
-flowchart TD
-    accTitle: Grammar Scoring Pipeline
-    accDescr: Audio clips are filtered for noise, processed into text and speech features, scored by an ensemble model, and normalized into a final 1-5 grade.
-
-    %% Main Input & Outputs
-    audio([🎤 Audio Clips])
-    zero[❌ Score 0]
-    out([📤 submission.csv])
-
-    %% Guard Condition
-    noise{🛡️ Is it noise?}
-
-    %% Step 1 Subgraph
-    subgraph step1 ["⚙️ Step 1: Feature Extraction"]
-        speech[🧠 Speech Features]
-        text[📝 Transcripts & Text Features]
-        grammar[🔍 Grammar Error Signals]
-    end
-
-    %% Step 2 Subgraph
-    subgraph step2 ["🧠 Step 2: Model Training & Ensembling"]
-        small[🤖 Base Models<br/>Ridge, SVR, TabPFN]
-        mix[🧬 Blending & Meta-Modeling<br/>NNLS + Ordinal Head]
-    end
-
-    %% Step 3 Subgraph
-    subgraph step3 ["🚀 Step 3: Post-Processing & Final Score"]
-        pool[👥 Same-Speaker Pooling]
-        clip[🛡️ Range Clipping<br/>Score 1 to 5]
-    end
-
-    %% Pipeline Connections
-    audio --> noise
-    
-    %% Noise Branch
-    noise -->|Yes: Noise| zero
-    zero --> out
-
-    %% Valid Speech Branch
-    noise -->|No: Speech| speech
-    noise -->|No: Speech| text
-    
-    text --> grammar
-    
-    %% Feature Feeding into Models
-    speech --> small
-    text --> small
-    grammar --> small
-    
-    %% Modeling to Final Output
-    small --> mix
-    mix --> pool
-    pool --> clip
-    clip --> out
-
-    %% Styling and Themes
-    classDef input fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a;
-    classDef output fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef guard fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-
-    class audio input;
-    class out output;
-    class noise,clip,zero guard;
-    style step1 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
-    style step2 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
-    style step3 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
-```
-
-### 📋 Pipeline Breakdown
-
-1. **Gatekeeping & Cleanup:** The audio is immediately passed through a noise gate classifier. If it contains purely noise, the pipeline short-circuits to output a **Score of 0**, preserving computing power.
-2. **Feature Extraction:** Valid speech is broken down into multi-modal components:
-   * **Speech Features:** Acoustic and audio metrics.
-   * **Transcripts & Text Features:** Text generated via ASR tools.
-   * **Grammar Error Signals:** Explicit downstream grammar markers parsed from the transcript text.
-3. **Ensemble Modeling:** Features are passed through diversified baseline architectures (`Ridge`, `SVR`, `TabPFN`), which are then blended using Non-Negative Least Squares (`NNLS`) combined with an ordinal head to output a continuous score.
-4. **Post-Processing:** Scores are normalized across the same speaker using group pooling and clipped to match the evaluation metric's strict **1 to 5 boundary constraint**.
-
+![Architecture](architecture.png)
 
 ---
 
@@ -177,13 +96,6 @@ RMSE is the average error (lower is better). Pearson shows how closely predictio
 | Ordinal head only | 0.5145 | 0.8621 |
 | **Final mix (NNLS + ordinal head, 50/50)** | **0.5085** | **0.8652** |
 | Final mix + same-speaker pooling | **0.5039** | - |
-
-**Other checks**
-
-- **Unseen questions:** on questions the model never saw in training, the final mix gets an RMSE of 0.5191 (plain average: 0.5665).
-- **By clip length** (final mix, before pooling): 45 s clips 0.520, 60 s clips 0.508, under 44 s 0.514, 44-59 s 0.437.
-- **Noise rule:** it caught all 37 noise clips in training (100%). No test clip was flagged.
-- **Why speaker-safe validation matters:** one test model scored 0.522 with random splits but 0.606 when speakers were kept apart. Random splits make the score look better than it really is.
 
 **Data size**
 
