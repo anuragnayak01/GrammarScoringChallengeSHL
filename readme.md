@@ -53,10 +53,9 @@ Two mixers combine the model outputs:
 
 | File | Purpose |
 | --- | --- |
-| `extract_features.py` | Creates all features and saves them in `features/` |
+
 | `shl_grammar_scoring.ipynb` | Trains the models, mixes them, writes the submission |
-| `features/` | Saved features (created by the script) |
-| `submission.csv` | Final predictions |
+
 
 ---
 
