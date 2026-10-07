@@ -121,8 +121,3 @@ RMSE is the average error (lower is better). Pearson shows how closely predictio
 
 ---
 
-## ⚠️ Good to know
-
-- Settings like pruning and mixing weights are chosen on the same validation used for scoring, so the score is slightly optimistic.
-- Speaker pooling helps less on the test set. 74% of graded train clips share a speaker with another clip, but only 25% of test clips do, so expect about a third of the pooling gain there.
-- The training score (0.225) is much lower than the validation score (0.509) because the models have seen those clips. Use the validation score to judge the model.
