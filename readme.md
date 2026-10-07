@@ -6,59 +6,73 @@ It does not rely on one model. It looks at each clip in many ways, trains many s
 
 ---
 
-## 🏗️ Architecture
-
-```mermaid
-flowchart TB
+flowchart TD
     accTitle: Grammar Scoring Pipeline
-    accDescr: Audio clips are turned into features, used to train many small models, mixed into one score, and cleaned up to give the final grade.
+    accDescr: Audio clips are filtered for noise, processed into text and speech features, scored by an ensemble model, and normalized into a final 1-5 grade.
 
-    audio([🎤 Audio clips])
-
-    subgraph step1 ["⚙️ Step 1 - Get features"]
-        speech[🧠 Speech features]
-        text[📝 Transcripts and text features]
-        grammar[🔍 Grammar error signals]
-    end
-
-    noise{🛡️ Is it noise?}
-
-    subgraph step2 ["🧠 Step 2 - Train models"]
-        small[⚙️ Many small models<br/>Ridge, SVR, TabPFN]
-        mix[⚙️ Mix the models<br/>NNLS + ordinal head]
-    end
-
-    subgraph step3 ["🚀 Step 3 - Final score"]
-        pool[👥 Same speaker pooling]
-        clip[🛡️ Keep score between 1 and 5]
-    end
-
+    %% Main Input & Outputs
+    audio([🎤 Audio Clips])
     zero[❌ Score 0]
     out([📤 submission.csv])
 
+    %% Guard Condition
+    noise{🛡️ Is it noise?}
+
+    %% Step 1 Subgraph
+    subgraph step1 ["⚙️ Step 1: Feature Extraction"]
+        speech[🧠 Speech Features]
+        text[📝 Transcripts & Text Features]
+        grammar[🔍 Grammar Error Signals]
+    end
+
+    %% Step 2 Subgraph
+    subgraph step2 ["🧠 Step 2: Model Training & Ensembling"]
+        small[🤖 Base Models<br/>Ridge, SVR, TabPFN]
+        mix[🧬 Blending & Meta-Modeling<br/>NNLS + Ordinal Head]
+    end
+
+    %% Step 3 Subgraph
+    subgraph step3 ["🚀 Step 3: Post-Processing & Final Score"]
+        pool[👥 Same-Speaker Pooling]
+        clip[🛡️ Range Clipping<br/>Score 1 to 5]
+    end
+
+    %% Pipeline Connections
     audio --> noise
-    audio --> speech
-    audio --> text
+    
+    %% Noise Branch
+    noise -->|Yes: Noise| zero
+    zero --> out
+
+    %% Valid Speech Branch
+    noise -->|No: Speech| speech
+    noise -->|No: Speech| text
+    
     text --> grammar
+    
+    %% Feature Feeding into Models
     speech --> small
     text --> small
     grammar --> small
+    
+    %% Modeling to Final Output
     small --> mix
     mix --> pool
     pool --> clip
-    noise -->|noise| zero
-    noise -->|speech| small
     clip --> out
-    zero --> out
 
-    classDef input fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a5f
-    classDef output fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
-    classDef guard fill:#fef9c3,stroke:#ca8a04,stroke-width:2px,color:#713f12
+    %% Styling and Themes
+    classDef input fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a;
+    classDef output fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef guard fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef step fill:#eef2ff,stroke:#4f46e5,stroke-dasharray: 5 5;
 
-    class audio input
-    class out output
-    class noise,clip guard
-```
+    class audio input;
+    class out output;
+    class noise,clip,zero guard;
+    style step1 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
+    style step2 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
+    style step3 fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
 
 ---
 
@@ -135,7 +149,34 @@ Open the notebook, set the data and features paths in the first cell, and run al
 
 ---
 
-## ⚠️ Good to know
+## 📊 Results
 
-- Settings like pruning and mixing weights are chosen on the same validation used for scoring, so the score is slightly optimistic.
-- Speaker pooling helps less on the test set because fewer test speakers have more than one clip.
+RMSE is the average error (lower is better). Pearson shows how closely predictions follow the true grades (higher is better). All numbers come from the notebook's validation, where clips from the same speaker are never split between training and testing.
+
+| Model | RMSE | Pearson |
+| --- | --- | --- |
+| Best single model (all features + TabPFN) | 0.5156 | 0.8615 |
+| Plain average of 72 models | 0.5306 | 0.8627 |
+| NNLS mix only | 0.5119 | 0.8632 |
+| Ordinal head only | 0.5145 | 0.8621 |
+| **Final mix (NNLS + ordinal head, 50/50)** | **0.5085** | **0.8652** |
+| Final mix + same-speaker pooling | **0.5039** | - |
+
+**Other checks**
+
+- **Unseen questions:** on questions the model never saw in training, the final mix gets an RMSE of 0.5191 (plain average: 0.5665).
+- **By clip length** (final mix, before pooling): 45 s clips 0.520, 60 s clips 0.508, under 44 s 0.514, 44-59 s 0.437.
+- **Noise rule:** it caught all 37 noise clips in training (100%). No test clip was flagged.
+- **Why speaker-safe validation matters:** one test model scored 0.522 with random splits but 0.606 when speakers were kept apart. Random splits make the score look better than it really is.
+
+**Data size**
+
+| | Clips | Speakers |
+| --- | --- | --- |
+| Train | 769 (732 graded, 37 noise) | 388 |
+| Test | 216 | 182 |
+
+**Test predictions:** average 3.25, lowest 1.94, highest 5.0.
+
+---
+
